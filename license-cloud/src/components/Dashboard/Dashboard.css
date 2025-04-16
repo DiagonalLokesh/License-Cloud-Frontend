@@ -1,0 +1,170 @@
+.dashboard-wrapper {
+    display: flex;
+    height: 100vh;
+    /* background: #f9fafb; */
+    /* background: url("../../assets/no_data_page.jpg") 60% center / 200px auto no-repeat; */
+  }
+  
+  .sidebar {
+    background: #111827;
+    color: white;
+    width: 220px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s ease;
+  }
+  
+  .sidebar.collapsed {
+    width: 54px;
+  }
+  
+  .collapse-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    margin-bottom: 32px;
+    align-self: flex-end;
+  }
+  
+  .nav-links {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .nav-links a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: white;
+    text-decoration: none;
+    padding: 12px;
+    border-radius: 8px;
+    /* transition: background 0.2s ease; */
+  }
+  
+  .nav-links a:hover,
+  .nav-links a.active {
+    background-color: #1f2937;
+  }
+  
+  .dashboard-content {
+    flex: 1;
+    padding: 32px;
+    overflow-y: auto;
+  }
+
+  .logout-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    padding: 12px;
+    border-radius: 8px;
+  }
+  
+  .logout-btn:hover {
+    background-color: #1f2937;
+  }
+  
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .modal {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    text-align: center;
+  }
+  
+  .modal-buttons {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+  }
+  
+  .btn-confirm,
+  .btn-cancel {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  
+  .btn-confirm {
+    background-color: #dc2626;
+    color: white;
+  }
+  
+  .btn-cancel {
+    background-color: #9ca3af;
+    color: white;
+  }
+
+  /* Add these styles to your Dashboard.css file */
+
+.bottom-user-profile {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  box-sizing: border-box;
+}
+
+.avatar-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #6366f1;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.avatar-circle::after {
+  content: attr(data-initial);
+}
+
+.bottom-email {
+  margin-left: 10px;
+  font-size: 0.90rem;
+  color: white;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-grow: 1;
+}
+
+.sidebar {
+  position: relative;
+}
+
+/* Adjust for collapsed sidebar */
+.sidebar.collapsed .bottom-user-profile {
+  justify-content: center;
+  padding: 0 5px;
+}

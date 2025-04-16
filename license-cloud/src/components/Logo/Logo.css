@@ -1,0 +1,12 @@
+.logo-wrapper {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    z-index: 1;
+  }
+  
+  .background-logo {
+    height: 50px;
+    width: auto;
+  }
+  
