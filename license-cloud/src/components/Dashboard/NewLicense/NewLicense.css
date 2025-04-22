@@ -152,6 +152,18 @@ body {
   border-radius: 2px;
 }
 
+.form-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.form-row .form-group {
+  flex: 1;
+  min-width: 250px;
+}
+
 .form-group {
   margin-bottom: 1.5rem;
 }
@@ -164,7 +176,7 @@ body {
 }
 
 .form-control {
-  width: 100%;
+  width: 95%;
   padding: 0.75rem 1rem;
   border: 1px solid #e2e8f0;
   border-radius: 8px;

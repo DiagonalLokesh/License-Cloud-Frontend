@@ -3,17 +3,18 @@ import InviteUsersDialog from "./InviteUsersDialog";
 import { ENDPOINTS } from "../../../API/Endpoint";
 import storageService from "../../../utils/storageService";
 import { Filter, Calendar } from 'lucide-react';
+import { toast } from "react-toastify";
 import "./UserDetails.css";
 
-// Interface for user data
-interface UserData {
-  email: string;
-  requestDate: string;
-  status: "Accepted" | "Pending";
-}
+  // Interface for user data
+  interface UserData {
+    email: string;
+    requestDate: string;
+    status: "Accepted" | "Pending";
+  }
 
-// Filter options for status
-type StatusFilter = "All" | "Accepted" | "Pending";
+  // Filter options for status
+  type StatusFilter = "All" | "Accepted" | "Pending";
 
 const UserDetails: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -24,8 +25,7 @@ const UserDetails: React.FC = () => {
   const [showMonthYearPicker, setShowMonthYearPicker] = useState<boolean>(false);
   const [showYearPicker, setShowYearPicker] = useState<boolean>(false);
   const [selectedYearDecade, setSelectedYearDecade] = useState<number>(Math.floor(2024 / 10) * 5);
-
-
+  const [enabledUsers, setEnabledUsers] = useState<{[email: string]: boolean}>({});
   // Filter states
   const [emailFilter, setEmailFilter] = useState<string>("");
   const [dateFilter, setDateFilter] = useState<string>("");
@@ -46,7 +46,7 @@ const UserDetails: React.FC = () => {
 
   const usersPerPage = 10;
 
-    // Add these handler functions for month/year selection
+  // Add these handler functions for month/year selection
   const toggleMonthYearView = () => {
     setShowMonthYearPicker(!showMonthYearPicker);
     setShowYearPicker(false);
@@ -74,7 +74,41 @@ const UserDetails: React.FC = () => {
   const handleNextDecade = () => {
     setSelectedYearDecade(selectedYearDecade + 10);
   };
-  // Mock data for demonstration
+
+  // Parse the datetime string from the API response
+  // Parse the datetime string from the API response
+  const parseDateTimeString = (dateTimeStr: string): string => {
+  if (!dateTimeStr || dateTimeStr === "{}") {
+    return new Date().toISOString().split("T")[0]; // Default to today
+  }
+
+  try {
+    // Extract the datetime string using regex
+    let dateMatch;
+    
+    // Check if it's Invited_at or Modified_At
+    if (dateTimeStr.includes("Invited_at")) {
+      dateMatch = dateTimeStr.match(/Invited_at': datetime\.datetime\((\d+), (\d+), (\d+)/);
+    } else {
+      dateMatch = dateTimeStr.match(/Modified_At': datetime\.datetime\((\d+), (\d+), (\d+)/);
+    }
+
+    if (dateMatch && dateMatch.length >= 4) {
+      const year = parseInt(dateMatch[1]);
+      const month = parseInt(dateMatch[2]) - 1;
+      const day = parseInt(dateMatch[3]);
+      
+      // const date = new Date(year, month, day);
+      return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+    } catch (error) {
+        console.error("Error parsing date string:", error);
+      }
+      
+      return new Date().toISOString().split("T")[0]; // Fallback to today
+    }
+
+  // Fetch user data from API
   useEffect(() => {
     console.log("Email from local storage:", email);
 
@@ -94,13 +128,18 @@ const UserDetails: React.FC = () => {
         const data = await response.json();
   
         if (data?.items) {
-          const today = new Date().toISOString().split("T")[0]; 
-  
+
           const formattedUsers = data.items.map((item: any) => ({
             email: item.email,
             status: item.status as "Accepted" | "Pending",
-            requestDate: today
+            requestDate: parseDateTimeString(item.date_and_time)
           }));
+          
+          const userStatusMap = formattedUsers.reduce((acc: {[key: string]: boolean}, user: UserData) => {
+            acc[user.email] = user.status === "Accepted";
+            return acc;
+          }, {});
+          setEnabledUsers(userStatusMap);
           
           console.log("Formatted user data:", formattedUsers);
 
@@ -276,61 +315,101 @@ const UserDetails: React.FC = () => {
     }
   };
 
- // Update the calendar rendering function to handle future dates properly
-const renderCalendar = () => {
-  const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
-  const firstDay = getFirstDayOfMonth(selectedYear, selectedMonth);
-  const monthName = new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long' });
+  const handleDisableStatusToggle = async (email: string, currentStatus: boolean) => {
+    try {
+      const requestBody = { disable_email: email };
   
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+      const response = await fetch(ENDPOINTS.DASHBOARD.USER_DETAILS, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      });
   
-  const days = [];
-  const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
   
-  // Weekday headers
-  days.push(
-    <div className="calendar-header" key="header">
-      {weekDays.map(day => (
-        <div className="weekday" key={day}>{day}</div>
-      ))}
-    </div>
-  );
+      setEnabledUsers(prev => ({
+        ...prev,
+        [email]: !currentStatus
+      }));
   
-  // Calendar grid
-  let dayCounter = 1;
-  const calendarRows = [];
-  
-  // Add empty cells for days before the first day of month
-  const firstRow = [];
-  for (let i = 0; i < firstDay; i++) {
-    firstRow.push(<div className="calendar-day empty" key={`empty-${i}`}></div>);
-  }
-  
-  // Add days of the month to the first row
-  for (let i = firstDay; i < 7; i++) {
-    const dayDate = new Date(selectedYear, selectedMonth, dayCounter);
-    const isFutureDate = dayDate > today;
+      toast.success(`User disabled successfully`);
+    } catch (error) {
+      // console.error("Failed to update user status:", error);
+      toast.error("Failed to update user status");
+    }
+  };
 
-    firstRow.push(
-      <div 
-        className={`calendar-day ${dateFilter === `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(dayCounter).padStart(2, '0')}` ? 'selected' : ''} ${isFutureDate ? 'disabled' : ''}`}
-        key={dayCounter}
-        onClick={() => !isFutureDate && handleDateSelect(dayCounter)}
-      >
-        {dayCounter++}
+    const handleEnableStatusToggle = async (email: string, currentStatus: boolean) => {
+      try {
+        const requestBody = { emails: [email] }
+    
+        const response = await fetch(ENDPOINTS.DASHBOARD.USER_DETAILS, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(requestBody)
+        });
+    
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+    
+        // Toggle the local state
+        setEnabledUsers(prev => ({
+          ...prev,
+          [email]: !currentStatus
+        }));
+    
+        toast.success(`User enabled successfully`);
+      } catch (error) {
+        // console.error("Failed to update user status:", error);
+        toast.error("Failed to update user status");
+      }
+    };
+  
+    const renderCalendar = () => {
+    const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
+    const firstDay = getFirstDayOfMonth(selectedYear, selectedMonth);
+    const monthName = new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long' });
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const days = [];
+    const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    
+    // Weekday headers
+    days.push(
+      <div className="calendar-header" key="header">
+        {weekDays.map(day => (
+          <div className="weekday" key={day}>{day}</div>
+        ))}
       </div>
     );
-  }
-  calendarRows.push(<div className="calendar-row" key="row-0">{firstRow}</div>);
-  
-  // Add remaining days
-  while (dayCounter <= daysInMonth) {
-    const row = [];
-    for (let i = 0; i < 7 && dayCounter <= daysInMonth; i++) {
+    
+    // Calendar grid
+    let dayCounter = 1;
+    const calendarRows = [];
+    
+    // Add empty cells for days before the first day of month
+    const firstRow = [];
+    for (let i = 0; i < firstDay; i++) {
+      firstRow.push(<div className="calendar-day empty" key={`empty-${i}`}></div>);
+    }
+    
+    // Add days of the month to the first row
+    for (let i = firstDay; i < 7; i++) {
       const dayDate = new Date(selectedYear, selectedMonth, dayCounter);
       const isFutureDate = dayDate > today;
-      row.push(
+
+      firstRow.push(
         <div 
           className={`calendar-day ${dateFilter === `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(dayCounter).padStart(2, '0')}` ? 'selected' : ''} ${isFutureDate ? 'disabled' : ''}`}
           key={dayCounter}
@@ -340,73 +419,91 @@ const renderCalendar = () => {
         </div>
       );
     }
-    calendarRows.push(<div className="calendar-row" key={`row-${calendarRows.length}`}>{row}</div>);
-  }
-  
-  return (
-    <div className="calendar-container">
-      <div className="calendar-navigation">
-        <button onClick={handlePrevMonth}>&lt;</button>
-        <div className="month-year" onClick={toggleMonthYearView}>
-          {`${monthName} ${selectedYear}`}
+    calendarRows.push(<div className="calendar-row" key="row-0">{firstRow}</div>);
+    
+    // Add remaining days
+    while (dayCounter <= daysInMonth) {
+      const row = [];
+      for (let i = 0; i < 7 && dayCounter <= daysInMonth; i++) {
+        const dayDate = new Date(selectedYear, selectedMonth, dayCounter);
+        const isFutureDate = dayDate > today;
+        row.push(
+          <div 
+            className={`calendar-day ${dateFilter === `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(dayCounter).padStart(2, '0')}` ? 'selected' : ''} ${isFutureDate ? 'disabled' : ''}`}
+            key={dayCounter}
+            onClick={() => !isFutureDate && handleDateSelect(dayCounter)}
+          >
+            {dayCounter++}
+          </div>
+        );
+      }
+      calendarRows.push(<div className="calendar-row" key={`row-${calendarRows.length}`}>{row}</div>);
+    }
+    
+    return (
+      <div className="calendar-container">
+        <div className="calendar-navigation">
+          <button onClick={handlePrevMonth}>&lt;</button>
+          <div className="month-year" onClick={toggleMonthYearView}>
+            {`${monthName} ${selectedYear}`}
+          </div>
+          <button onClick={handleNextMonth}>&gt;</button>
         </div>
-        <button onClick={handleNextMonth}>&gt;</button>
-      </div>
-      
-      {showMonthYearPicker ? (
-        <div className="month-year-picker">
-          {showYearPicker ? (
-            <div className="year-picker">
-              <div className="year-grid">
-                {Array.from({ length: 12 }, (_, i) => selectedYearDecade + i).map(year => (
+        
+        {showMonthYearPicker ? (
+          <div className="month-year-picker">
+            {showYearPicker ? (
+              <div className="year-picker">
+                <div className="year-grid">
+                  {Array.from({ length: 12 }, (_, i) => selectedYearDecade + i).map(year => (
+                    <div 
+                      key={year} 
+                      className={`year-cell ${year === selectedYear ? 'selected' : ''}`}
+                      onClick={() => handleYearSelect(year)}
+                    >
+                      {year}
+                    </div>
+                  ))}
+                </div>
+                <div className="year-navigation">
+                  <button onClick={handlePrevDecade}>←</button>
+                  <span>{selectedYearDecade} - {selectedYearDecade + 11}</span>
+                  <button onClick={handleNextDecade}>→</button>
+                </div>
+              </div>
+            ) : (
+              <div className="month-picker">
+                {Array.from({ length: 12 }, (_, i) => i).map(month => (
                   <div 
-                    key={year} 
-                    className={`year-cell ${year === selectedYear ? 'selected' : ''}`}
-                    onClick={() => handleYearSelect(year)}
+                    key={month} 
+                    className={`month-cell ${month === selectedMonth ? 'selected' : ''}`}
+                    onClick={() => handleMonthSelect(month)}
                   >
-                    {year}
+                    {new Date(2000, month).toLocaleString('default', { month: 'short' })}
                   </div>
                 ))}
-              </div>
-              <div className="year-navigation">
-                <button onClick={handlePrevDecade}>←</button>
-                <span>{selectedYearDecade} - {selectedYearDecade + 11}</span>
-                <button onClick={handleNextDecade}>→</button>
-              </div>
-            </div>
-          ) : (
-            <div className="month-picker">
-              {Array.from({ length: 12 }, (_, i) => i).map(month => (
-                <div 
-                  key={month} 
-                  className={`month-cell ${month === selectedMonth ? 'selected' : ''}`}
-                  onClick={() => handleMonthSelect(month)}
-                >
-                  {new Date(2000, month).toLocaleString('default', { month: 'short' })}
+                <div className="year-selector" onClick={toggleYearPicker}>
+                  {selectedYear} ↓
                 </div>
-              ))}
-              <div className="year-selector" onClick={toggleYearPicker}>
-                {selectedYear} ↓
               </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="calendar">
-          {days}
-          {calendarRows}
-        </div>
-      )}
-      
-      {dateFilter && (
-        <div className="selected-date">
-          <p>Selected: {formatDate(dateFilter)}</p>
-          <button onClick={() => setDateFilter("")}>Clear</button>
-        </div>
-      )}
-    </div>
-  );
-};
+            )}
+          </div>
+        ) : (
+          <div className="calendar">
+            {days}
+            {calendarRows}
+          </div>
+        )}
+        
+        {dateFilter && (
+          <div className="selected-date">
+            <p>Selected: {formatDate(dateFilter)}</p>
+            <button onClick={() => setDateFilter("")}>Clear</button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const filteredUsers = getFilteredUsers();
   const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
@@ -539,6 +636,9 @@ const renderCalendar = () => {
               <th>
                 Actions
               </th>
+              {/* <th>
+                Access
+              </th> */}
             </tr>
           </thead>
           <tbody>
@@ -576,11 +676,26 @@ const renderCalendar = () => {
                     </button>
                     {openMenuIndex === index && (
                       <div className="dropdown-menu">
-                        <button onClick={() => handleDeleteUser(index)}>Delete</button>
-                      </div>
+                      <button onClick={() => handleDeleteUser(index)}>Delete</button>
+                      {!enabledUsers[user.email] && (
+                        <button onClick={() => handleEnableStatusToggle(user.email, enabledUsers[user.email])}>Enable Access</button>
+                      )}
+                      {enabledUsers[user.email] && (
+                        <button onClick={() => handleDisableStatusToggle(user.email, enabledUsers[user.email])}>Disable Access</button>
+                      )}
+                    </div>
                     )}
                   </div>
                 </td>
+                {/* <td className="switch-cell">
+                  <div
+                    className={`custom-switch ${enabledUsers[user.email] ? "on" : "off"}`}
+                    onClick={() => handleStatusToggle(user.email, enabledUsers[user.email])}
+                  >
+                    <div className="switch-knob" />
+                  </div>
+                </td> */}
+
               </tr>
             ))}
             {currentUsers.length === 0 && (

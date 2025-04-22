@@ -15,6 +15,9 @@ export const ENDPOINTS = {
     CLIENTS: `${BASE_URL}/dashboard/clients`,
     LICENSE_DETAILS: `${BASE_URL}/dashboard/license-details`,
     USER_DETAILS: `${BASE_URL}/UserDetails`,
-    INVITE_USERS: `${BASE_URL}/invite-users`
+    INVITE_USERS: `${BASE_URL}/invite-users`,
+    GET_LICENSE: `${BASE_URL}/get-license`,
+    CREATE_CLIENTS: `${BASE_URL}/create_client`,
+    CREATE_LICENSE: `${BASE_URL}/create-license`,
   }
 };

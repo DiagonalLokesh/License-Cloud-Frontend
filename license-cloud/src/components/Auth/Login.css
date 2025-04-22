@@ -34,13 +34,13 @@ margin-bottom: 22px;
 .login-form-container {
 display: flex;
 flex-direction: column;
-gap: 12px;
+/* gap: 12px; */
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  /* gap: 4px; */
   margin-bottom: 16px;  /* Increased space between input groups */
 }
 

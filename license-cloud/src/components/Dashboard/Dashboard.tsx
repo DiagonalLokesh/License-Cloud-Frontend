@@ -53,19 +53,19 @@ const Dashboard: React.FC = () => {
           </Link>
 
           <Link
-            to="/dashboard/clients"
-            className={location.pathname.includes("clients") ? "active" : ""}>
-            <Users />
-            {!collapsed && <span>Clients</span>}
-          </Link>
-
-          <Link
             to="/dashboard/license-details"
             className={location.pathname.includes("license-details") ? "active" : ""}>
             <FileSearch />
             {!collapsed && <span>License Details</span>}
           </Link>
 
+          <Link
+            to="/dashboard/clients"
+            className={location.pathname.includes("clients") ? "active" : ""}>
+            <Users />
+            {!collapsed && <span>Clients</span>}
+          </Link>
+          
           <Link
             to="/dashboard/user-details"
             className={location.pathname.includes("user-details") ? "active" : ""}
