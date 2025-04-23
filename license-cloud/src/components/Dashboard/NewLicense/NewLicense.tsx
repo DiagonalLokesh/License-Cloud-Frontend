@@ -23,8 +23,8 @@ const NewLicense: React.FC = () => {
   const [licenseClients, setLicenseClients] = useState<{ client_name: string, client_id: string,serial_number: number}[]>([]);
 
   const [licenseMode, setLicenseMode] = useState("Renew"); // default is New
-  const [renewSerial, setRenewSerial] = useState<number | null>(null);
-
+  //const [renewSerial, setRenewSerial] = useState<number | null>(null);
+  const [, setRenewSerial] = useState<number | null>(null);
 
   const handleOptionClick = async (option: string) => {
     setSelectedOption(option);
