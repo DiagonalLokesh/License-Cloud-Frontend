@@ -5,7 +5,8 @@ import { ENDPOINTS } from "../API/Endpoint";
 import { toast } from "react-toastify";
 
 const ActivityManager: React.FC = () => {
-  const [activityTime, setActivityTime] = useState(0);
+  // const [activityTime, setActivityTime] = useState(0);
+  const [, setActivityTime] = useState(0);
   const [inactivityTime, setInactivityTime] = useState(0);
   const [showReconnect, setShowReconnect] = useState(false);  // 15-min inactive dialog
   const [showRelogin, setShowRelogin] = useState(false);      // 45-min inactive dialog
