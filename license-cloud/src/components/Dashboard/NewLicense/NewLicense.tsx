@@ -20,11 +20,12 @@ const NewLicense: React.FC = () => {
   const [needsStorage, setNeedsStorage] = useState("false");
 
   // Store license data
-  const [licenseClients, setLicenseClients] = useState<{ client_name: string, client_id: string,serial_number: number}[]>([]);
+  const [licenseClients, setLicenseClients] = useState<{ client_name: string, client_id: string, serial_number: number }[]>([]);
+  
+  // Store raw license data to calculate next serial number
+  const [rawLicenseData, setRawLicenseData] = useState<any[]>([]);
 
-  const [licenseMode, setLicenseMode] = useState("Renew"); // default is New
-  //const [renewSerial, setRenewSerial] = useState<number | null>(null);
-  const [, setRenewSerial] = useState<number | null>(null);
+  const [licenseMode, setLicenseMode] = useState("Renew"); // default is Renew
 
   const handleOptionClick = async (option: string) => {
     setSelectedOption(option);
@@ -32,7 +33,7 @@ const NewLicense: React.FC = () => {
   
     if (option === "existing") {
       try {
-        const response = await fetch("https://license.aryabhat.ai/api/get-license", {
+        const response = await fetch(ENDPOINTS.DASHBOARD.GET_LICENSE, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -42,37 +43,46 @@ const NewLicense: React.FC = () => {
         });
   
         const data = await response.json();
+        const licenseList = data.items || [];
+        
+        // Store raw license data for serial number calculations
+        setRawLicenseData(licenseList);
   
-        // Extract unique client_name/client_id combos
-        const uniqueClientsMap: { [key: string]: { client_id: string, serial_number: number } } = {};
-        data.forEach((item: any) => {
-          if (!uniqueClientsMap[item.client_name]) {
-            uniqueClientsMap[item.client_name] = {
-              client_id: item.client_id,
-              serial_number: item.serial_number
-            };
+        // Process client data
+        const uniqueClientsMap: {
+          [key: string]: { client_id: string; serial_number: number };
+        } = {};
+  
+        // Find the highest serial number for each client
+        licenseList.forEach((item: any) => {
+          if (item.client_name) {
+            if (!uniqueClientsMap[item.client_name] || 
+                item.serial_number > uniqueClientsMap[item.client_name].serial_number) {
+              uniqueClientsMap[item.client_name] = {
+                client_id: item.client_id,
+                serial_number: item.serial_number,
+              };
+            }
           }
         });
-
-        const uniqueClients = Object.entries(uniqueClientsMap).map(([name, details]) => ({
-          client_name: name,
-          client_id: details.client_id,
-          serial_number: details.serial_number,
-        }));
-
+  
+        const uniqueClients = Object.entries(uniqueClientsMap).map(
+          ([client_name, details]) => ({
+            client_name,
+            client_id: details.client_id,
+            serial_number: details.serial_number,
+          })
+        );
   
         setLicenseClients(uniqueClients);
 
-        const latestClient = data[0]; 
-        if (latestClient && latestClient.serial_number) {
-          setRenewSerial(latestClient.serial_number);
-        }
+        
       } catch (err) {
         toast.error("Failed to load clients");
         console.error("License fetch error:", err);
       }
     }
-  };
+  };  
   
   const resetForm = () => {
     setClientID("");
@@ -89,6 +99,22 @@ const NewLicense: React.FC = () => {
     setNeedsStorage("false");
   };
   
+  // Function to get the next serial number for a client
+  const getNextSerialNumber = (clientName: string): number => {
+    // Filter licenses by client name
+    const clientLicenses = rawLicenseData.filter(
+      license => license.client_name === clientName
+    );
+    
+    // If no licenses found, start with 1
+    if (clientLicenses.length === 0) return 1;
+    
+    // Find the highest serial number
+    const highestSerial = Math.max(...clientLicenses.map(license => license.serial_number));
+    
+    // Return the next number
+    return highestSerial + 1;
+  };
 
   const accessToken = storageService.getItem(storageService.KEYS.ACCESS_TOKEN);
 
@@ -147,19 +173,20 @@ const NewLicense: React.FC = () => {
           })
         });
   
-      const data = await response.json();
+        const data = await response.json();
 
-      if (response.ok) {
-        toast.success(data.message);
-      } else {
-        toast.error(data.message);
-      }} catch (err) {
-            toast.error("Failed to generate license");
-          }
+        if (response.ok) {
+          toast.success(data.message);
+        } else {
+          toast.error(data.message);
+        }
+      } catch (err) {
+        toast.error("Failed to generate license");
+      }
     }
   };
   
-
+  
   return (
     <div className="license-container">
       <div className="license-container-header">
@@ -214,14 +241,20 @@ const NewLicense: React.FC = () => {
                       if (selected) {
                         setClientName(selected.client_name);
                         setClientID(selected.client_id);
+                        
+                        // Set serial number based on license mode
                         if (licenseMode === "Renew") {
+                          // For Renew: Use the last/highest serial number
                           setSerialCount(selected.serial_number);
+                        } else {
+                          // For New: Use the next available serial number
+                          setSerialCount(getNextSerialNumber(selected.client_name));
                         }
                       }
                     }}
                     required
                   >
-                    {/* <option value="">Select a client</option> */}
+                    <option value="">Select a client</option>
                     {licenseClients.map((client, index) => (
                       <option key={index} value={client.client_name}>
                         {client.client_name}
@@ -246,7 +279,7 @@ const NewLicense: React.FC = () => {
                   <input 
                     type="text" 
                     className="form-control" 
-                    // placeholder="Enter license type"
+                    
                     value={licenseType}
                     onChange={(e) => setLicenseType(e.target.value)}
                     required
@@ -290,10 +323,17 @@ const NewLicense: React.FC = () => {
                       onChange={(e) => {
                         const mode = e.target.value;
                         setLicenseMode(mode);
-                        if (mode === "Renew") {
+                        
+                        if (clientName) {
                           const selected = licenseClients.find(c => c.client_name === clientName);
                           if (selected) {
-                            setSerialCount(selected.serial_number);
+                            if (mode === "Renew") {
+                              // For Renew: Use the last/highest serial number
+                              setSerialCount(selected.serial_number);
+                            } else {
+                              // For New: Use the next available serial number
+                              setSerialCount(getNextSerialNumber(selected.client_name));
+                            }
                           }
                         }
                       }}
@@ -310,15 +350,11 @@ const NewLicense: React.FC = () => {
                         type="number"
                         className="form-control number-control"
                         value={serialCount}
-                        onChange={(e) => {
-                          if (licenseMode === "New") {
-                            setSerialCount(Math.max(1, parseInt(e.target.value) || 1));
-                          }
-                        }}
+                        readOnly={true}
                         min="1"
                         required
-                        readOnly={licenseMode === "Renew"}
-                      />
+                     
+                     />
                     </div>
                   </div>
                 </div>
@@ -368,7 +404,7 @@ const NewLicense: React.FC = () => {
                   <input 
                     type="text" 
                     className="form-control" 
-                    // placeholder="Enter client name"
+                    
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
                     required
@@ -380,7 +416,7 @@ const NewLicense: React.FC = () => {
                   <input 
                     type="text" 
                     className="form-control" 
-                    // placeholder="Enter contact person name"
+                   
                     value={contactPersonName}
                     onChange={(e) => setContactPersonName(e.target.value)}
                     required
@@ -392,7 +428,7 @@ const NewLicense: React.FC = () => {
                   <input 
                     type="text" 
                     className="form-control" 
-                    // placeholder="Enter contact person designation"
+                    
                     value={contactPersonDesignation}
                     onChange={(e) => setContactPersonDesignation(e.target.value)}
                     required
@@ -404,7 +440,7 @@ const NewLicense: React.FC = () => {
                   <input 
                     type="number" 
                     className="form-control" 
-                    // placeholder="Enter contact person mobile number"
+                   
                     value={contactPersonMobile}
                     onChange={(e) => setContactPersonMobile(e.target.value)}
                     required
@@ -418,7 +454,7 @@ const NewLicense: React.FC = () => {
               className="submit-button"
               disabled={selectedOption === "existing" && (!clientID || !clientName)}
             >
-              {selectedOption === "existing" ? "Update" : "Create"} Client
+              {selectedOption === "existing" ? "Generate License" : "Create Client"} 
             </button>
           </form>
         </div>

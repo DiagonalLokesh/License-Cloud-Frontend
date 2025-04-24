@@ -61,9 +61,15 @@ const LicenseKeyValidator: React.FC = () => {
   };
 
   return (
+    
     <div className="license-details-container">
+      <div className="license-details-container-header">
+          <h2>License Details</h2>
+          <p>Get License details by signed license key as input</p>
+      </div>
+      <div className="license-details-sub-container">
       <div className="license-card">
-        <h2 className="license-title">License Key Validator</h2>
+        <h2 className="license-title">License Key</h2>
         
         <form onSubmit={handleSubmit} className="license-form">
           <div className="form-group">
@@ -97,7 +103,7 @@ const LicenseKeyValidator: React.FC = () => {
         
         {licenseDetails && (
           <div className="details-section">
-            <h3 className="details-title">License Details</h3>
+            {/* <h3 className="details-title">License Details</h3> */}
             <div className="table-container">
               <table className="details-table">
                 <tbody>
@@ -158,6 +164,7 @@ const LicenseKeyValidator: React.FC = () => {
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

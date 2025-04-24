@@ -10,7 +10,9 @@ import {
   LogOut,
 } from "lucide-react";
 import "./Dashboard.css";
+import { ENDPOINTS } from "../../API/Endpoint";
 import storageService from "../../utils/storageService";
+import { toast } from "react-toastify";
 
 const Dashboard: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -18,6 +20,11 @@ const Dashboard: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const email = storageService.getItem(storageService.KEYS.USER_NAME);
+
+  // Token Extract
+
+  const accessToken = storageService.getItem(storageService.KEYS.ACCESS_TOKEN);
+  const sessionToken = storageService.getItem(storageService.KEYS.SESSION_TOKEN);
 
   const getInitial = (email: string | null): string => {
     if (!email) return "U";
@@ -28,9 +35,25 @@ const Dashboard: React.FC = () => {
     setShowLogoutModal(true);
   };
 
-  const confirmLogout = () => {
-    setShowLogoutModal(false);
-    navigate("/login");
+  const confirmLogout = async () => {
+    try {
+      const relogin = await fetch(ENDPOINTS.AUTH.LOGOUT, {
+      method: "POST",
+      headers: {
+          "Session-Token": sessionToken,
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+      },
+    });
+      if(relogin.status === 200) {
+          const data = await relogin.json();
+            toast.success(data.Logout);
+            setShowLogoutModal(true);
+            navigate("/login");
+        }
+      } catch (err) {
+          console.error("Logout failed");
+       };
   };
 
   const cancelLogout = () => {

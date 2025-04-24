@@ -10,12 +10,20 @@ import UserDetails from "../src/components/Dashboard/UserDetails/UserDetails";
 import NewLicense from "../src/components/Dashboard/NewLicense/NewLicense";
 import Clients from "../src/components/Dashboard/Clients/Clients";
 import LicenseDetails from "../src/components/Dashboard/LicenseDetails/LicenseDetails";
+import ActivityManager from "./API/ActivityManager";
+
+const DashboardLayout: React.FC = () => (
+  <>
+    <ActivityManager />
+    <Dashboard />
+  </>
+);
 
 const App: React.FC = () => {
   return (
     <Router>
       <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -23,7 +31,8 @@ const App: React.FC = () => {
         <Route path="/otp-validation" element={<OTPValidation />} />
         <Route path="/update-password" element={<UpdatePassword />} />
 
-        <Route path="/dashboard" element={<Dashboard />}>
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<Navigate to="new-license" replace />} />
           <Route path="new-license" element={<NewLicense />} />
           <Route path="license-details" element={<LicenseDetails />} />
           <Route path="clients" element={<Clients />} />
@@ -35,3 +44,10 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+{/* <Route path="/dashboard" element={<Dashboard />}>
+          <Route path="new-license" element={<NewLicense />} />
+          <Route path="license-details" element={<LicenseDetails />} />
+          <Route path="clients" element={<Clients />} />
+          <Route path="user-details" element={<UserDetails />} />
+        </Route> */}

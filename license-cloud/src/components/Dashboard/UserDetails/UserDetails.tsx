@@ -36,6 +36,8 @@ const UserDetails: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   // Refs for filter dropdowns
   const emailFilterRef = useRef<HTMLDivElement>(null);
   const dateFilterRef = useRef<HTMLDivElement>(null);
@@ -46,6 +48,18 @@ const UserDetails: React.FC = () => {
 
   const usersPerPage = 10;
 
+  const handleDelete = () => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete  = () => {
+    setShowDeleteModal(true);
+  }
+
+  const cancelDelete  = () => {
+    setShowDeleteModal(false);
+  }
+  
   // Add these handler functions for month/year selection
   const toggleMonthYearView = () => {
     setShowMonthYearPicker(!showMonthYearPicker);
@@ -344,6 +358,16 @@ const UserDetails: React.FC = () => {
     }
   };
 
+    const handleStatusToggle = (email: string, currentStatus: boolean) => {
+      if (currentStatus) {
+        // If currently enabled, disable it
+        handleDisableStatusToggle(email, currentStatus);
+      } else {
+        // If currently disabled, enable it
+        handleEnableStatusToggle(email, currentStatus);
+      }
+    };
+
     const handleEnableStatusToggle = async (email: string, currentStatus: boolean) => {
       try {
         const requestBody = { emails: [email] }
@@ -634,11 +658,12 @@ const UserDetails: React.FC = () => {
                 </div>
               </th>
               <th>
+                Access
+              </th>
+              <th>
                 Actions
               </th>
-              {/* <th>
-                Access
-              </th> */}
+              
             </tr>
           </thead>
           <tbody>
@@ -661,6 +686,14 @@ const UserDetails: React.FC = () => {
                     {user.status}
                   </span>
                 </td>
+                <td className="switch-cell">
+                  <div
+                    className={`custom-switch ${enabledUsers[user.email] ? "on" : "off"}`}
+                    onClick={() => handleStatusToggle(user.email, enabledUsers[user.email])}
+                  >
+                    <div className="switch-knob" />
+                  </div>
+                </td>
                 <td className="action-cell">
                   <div 
                     className="menu-wrapper" 
@@ -676,26 +709,17 @@ const UserDetails: React.FC = () => {
                     </button>
                     {openMenuIndex === index && (
                       <div className="dropdown-menu">
-                      <button onClick={() => handleDeleteUser(index)}>Delete</button>
-                      {!enabledUsers[user.email] && (
+                      <button onClick={() => handleDelete()}>Delete</button>
+                      {/* {!enabledUsers[user.email] && (
                         <button onClick={() => handleEnableStatusToggle(user.email, enabledUsers[user.email])}>Enable Access</button>
                       )}
                       {enabledUsers[user.email] && (
                         <button onClick={() => handleDisableStatusToggle(user.email, enabledUsers[user.email])}>Disable Access</button>
-                      )}
+                      )} */}
                     </div>
                     )}
                   </div>
                 </td>
-                {/* <td className="switch-cell">
-                  <div
-                    className={`custom-switch ${enabledUsers[user.email] ? "on" : "off"}`}
-                    onClick={() => handleStatusToggle(user.email, enabledUsers[user.email])}
-                  >
-                    <div className="switch-knob" />
-                  </div>
-                </td> */}
-
               </tr>
             ))}
             {currentUsers.length === 0 && (
@@ -725,6 +749,18 @@ const UserDetails: React.FC = () => {
             &gt;
           </button>
         </div>
+
+        {showDeleteModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <p>Are you sure you want to Delete User ?</p>
+            <div className="modal-buttons">
+              <button className="btn-confirm" onClick={confirmDelete}>Yes</button>
+              <button className="btn-cancel" onClick={cancelDelete}>No</button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
