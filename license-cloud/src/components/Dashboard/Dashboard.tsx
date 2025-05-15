@@ -13,6 +13,7 @@ import "./Dashboard.css";
 import { ENDPOINTS } from "../../API/Endpoint";
 import storageService from "../../utils/storageService";
 import { toast } from "react-toastify";
+import Logo from "../../../public/Logo.png";
 
 const Dashboard: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -22,7 +23,6 @@ const Dashboard: React.FC = () => {
   const email = storageService.getItem(storageService.KEYS.USER_NAME);
 
   // Token Extract
-
   const accessToken = storageService.getItem(storageService.KEYS.ACCESS_TOKEN);
   const sessionToken = storageService.getItem(storageService.KEYS.SESSION_TOKEN);
 
@@ -38,22 +38,22 @@ const Dashboard: React.FC = () => {
   const confirmLogout = async () => {
     try {
       const relogin = await fetch(ENDPOINTS.AUTH.LOGOUT, {
-      method: "POST",
-      headers: {
+        method: "POST",
+        headers: {
           "Session-Token": sessionToken,
           "Authorization": `Bearer ${accessToken}`,
           "Content-Type": "application/json",
-      },
-    });
+        },
+      });
       if(relogin.status === 200) {
-          const data = await relogin.json();
-            toast.success(data.Logout);
-            setShowLogoutModal(true);
-            navigate("/login");
-        }
-      } catch (err) {
-          console.error("Logout failed");
-       };
+        const data = await relogin.json();
+        toast.success(data.Logout);
+        setShowLogoutModal(true);
+        navigate("/login");
+      }
+    } catch (err) {
+      console.error("Logout failed");
+    };
   };
 
   const cancelLogout = () => {
@@ -63,9 +63,17 @@ const Dashboard: React.FC = () => {
   return (
     <div className="dashboard-wrapper">
       <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
+      <div className="sidebar-header">
+        {!collapsed && (
+          <div className="logo-container">
+            <img src={Logo} alt="Logo" className="logo" />
+            <span className="logo-text">Aryabhat</span>
+          </div>
+        )}
         <button className="collapse-btn" onClick={() => setCollapsed(!collapsed)}>
           {collapsed ? <Menu size={24} /> : <X size={24} />}
         </button>
+      </div>
 
         <nav className="nav-links">
           <Link

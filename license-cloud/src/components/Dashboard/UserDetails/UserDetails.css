@@ -148,6 +148,7 @@ html, body {
 
 .user-table {
   width: 100%;
+  overflow: auto;
   border-collapse: separate;
   border-spacing: 10px 20px;
 }

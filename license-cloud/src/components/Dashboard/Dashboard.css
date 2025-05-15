@@ -1,123 +1,163 @@
 .dashboard-wrapper {
-    display: flex;
-    height: 100vh;
-    /* background: #f9fafb; */
-    /* background: url("../../assets/no_data_page.jpg") 60% center / 200px auto no-repeat; */
-  }
-  
-  .sidebar {
-    background: #111827;
-    color: white;
-    width: 220px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    transition: width 0.3s ease;
-  }
-  
-  .sidebar.collapsed {
-    width: 54px;
-  }
-  
-  .collapse-btn {
-    background: transparent;
-    border: none;
-    color: white;
-    cursor: pointer;
-    margin-bottom: 32px;
-    align-self: flex-end;
-  }
-  
-  .nav-links {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  
-  .nav-links a {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    color: white;
-    text-decoration: none;
-    padding: 12px;
-    border-radius: 8px;
-    /* transition: background 0.2s ease; */
-  }
-  
-  .nav-links a:hover,
-  .nav-links a.active {
-    background-color: #1f2937;
-  }
-  
-  .dashboard-content {
-    flex: 1;
-    padding: 32px;
-    overflow-y: auto;
-  }
+  display: flex;
+  height: 100vh;
+  /* background: #f9fafb; */
+  /* background: url("../../assets/no_data_page.jpg") 60% center / 200px auto no-repeat; */
+}
 
-  .logout-btn {
-    background: transparent;
-    border: none;
-    color: white;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    padding: 12px;
-    border-radius: 8px;
-  }
-  
-  .logout-btn:hover {
-    background-color: #1f2937;
-  }
-  
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .modal {
-    background: white;
-    padding: 24px;
-    border-radius: 12px;
-    text-align: center;
-  }
-  
-  .modal-buttons {
-    margin-top: 16px;
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-  }
-  
-  .btn-confirm,
-  .btn-cancel {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  
-  .btn-confirm {
-    background-color: #dc2626;
-    color: white;
-  }
-  
-  .btn-cancel {
-    background-color: #9ca3af;
-    color: white;
-  }
+.sidebar {
+  background: #111827;
+  color: white;
+  width: 220px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease;
+  position: relative;
+}
 
-  /* Add these styles to your Dashboard.css file */
+.sidebar.collapsed {
+  width: 54px;
+}
 
+/* Sidebar header and logo styles */
+.sidebar-header {
+  height: 80px; /* or however tall it should be */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  position: relative;
+}
+
+.sidebar.collapsed .sidebar-header {
+  justify-content: center; /* center icon horizontally */
+}
+
+.collapse-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.logo-text {
+  font-weight: bold;
+  font-size: 1.2rem;
+  white-space: nowrap;
+}
+
+.collapse-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0;
+}
+
+.nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.nav-links a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: white;
+  text-decoration: none;
+  padding: 12px;
+  border-radius: 8px;
+  /* transition: background 0.2s ease; */
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+  background-color: #1f2937;
+}
+
+.dashboard-content {
+  flex: 1;
+  padding: 32px;
+  overflow-y: auto;
+}
+
+.logout-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.logout-btn:hover {
+  background-color: #1f2937;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.modal-buttons {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.btn-confirm,
+.btn-cancel {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-confirm {
+  background-color: #dc2626;
+  color: white;
+}
+
+.btn-cancel {
+  background-color: #9ca3af;
+  color: white;
+}
+
+/* User profile styles */
 .bottom-user-profile {
   position: absolute;
   bottom: 20px;
@@ -159,11 +199,16 @@
   flex-grow: 1;
 }
 
-.sidebar {
-  position: relative;
+/* Responsive adjustments for collapsed sidebar */
+.sidebar.collapsed .logo-container {
+  justify-content: center;
 }
 
-/* Adjust for collapsed sidebar */
+.sidebar.collapsed .logo {
+  width: 36px;
+  height: 36px;
+}
+
 .sidebar.collapsed .bottom-user-profile {
   justify-content: center;
   padding: 0 5px;

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import InviteUsersDialog from "./InviteUsersDialog";
 import { ENDPOINTS } from "../../../API/Endpoint";
 import storageService from "../../../utils/storageService";
-import { Filter } from 'lucide-react';
+// import { Filter } from 'lucide-react';
 import { toast } from "react-toastify";
 import "./UserDetails.css";
 
@@ -151,16 +151,16 @@ const UserDetails: React.FC = () => {
   // };
 
   // Toggle filter dropdowns
-  const toggleEmailFilter = () => {
-    setShowEmailFilter(!showEmailFilter);
-    // setShowDateFilter(false);
-    setShowStatusFilter(false);
-  };
+  // const toggleEmailFilter = () => {
+  //   setShowEmailFilter(!showEmailFilter);
+  //   // setShowDateFilter(false);
+  //   setShowStatusFilter(false);
+  // };
 
-  const toggleStatusFilter = () => {
-    setShowStatusFilter(!showStatusFilter);
-    setShowEmailFilter(false);
-  };
+  // const toggleStatusFilter = () => {
+  //   setShowStatusFilter(!showStatusFilter);
+  //   setShowEmailFilter(false);
+  // };
 
   // Apply filters to user data
   const getFilteredUsers = () => {
@@ -378,11 +378,11 @@ const UserDetails: React.FC = () => {
               <th>
                 User Email
                 <div className="filter-header">
-                  <span
+                  {/* <span
                     className="filter-icon"
                     onClick={toggleEmailFilter}>
                     <Filter size={14} />
-                  </span>
+                  </span> */}
                   {showEmailFilter && (
                     <div className="filter-dropdown email-filter-dropdown" ref={emailFilterRef}>
                       <input
@@ -404,11 +404,11 @@ const UserDetails: React.FC = () => {
               <th>
                 Status
                 <div className="filter-header">
-                  <span
+                  {/* <span
                     className="filter-icon"
                     onClick={toggleStatusFilter}>
                     <Filter size={14} />
-                  </span>
+                  </span> */}
                   {showStatusFilter && (
                     <div className="filter-status-dropdown status-filter-dropdown" ref={statusFilterRef}>
                       <div className="status-options">
