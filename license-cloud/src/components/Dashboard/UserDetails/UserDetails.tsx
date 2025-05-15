@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import InviteUsersDialog from "./InviteUsersDialog";
 import { ENDPOINTS } from "../../../API/Endpoint";
 import storageService from "../../../utils/storageService";
-import { Filter, Calendar } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import { toast } from "react-toastify";
 import "./UserDetails.css";
 
@@ -11,6 +11,7 @@ import "./UserDetails.css";
     email: string;
     requestDate: string;
     status: "Accepted" | "Pending";
+    accessEnabled: boolean;
   }
 
   // Filter options for status
@@ -22,25 +23,19 @@ const UserDetails: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
   const menuRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [showMonthYearPicker, setShowMonthYearPicker] = useState<boolean>(false);
-  const [showYearPicker, setShowYearPicker] = useState<boolean>(false);
-  const [selectedYearDecade, setSelectedYearDecade] = useState<number>(Math.floor(2024 / 10) * 5);
   const [enabledUsers, setEnabledUsers] = useState<{[email: string]: boolean}>({});
   // Filter states
   const [emailFilter, setEmailFilter] = useState<string>("");
   const [dateFilter, setDateFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
   const [showEmailFilter, setShowEmailFilter] = useState<boolean>(false);
-  const [showDateFilter, setShowDateFilter] = useState<boolean>(false);
   const [showStatusFilter, setShowStatusFilter] = useState<boolean>(false);
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Refs for filter dropdowns
   const emailFilterRef = useRef<HTMLDivElement>(null);
-  const dateFilterRef = useRef<HTMLDivElement>(null);
+  // const dateFilterRef = useRef<HTMLDivElement>(null);
   const statusFilterRef = useRef<HTMLDivElement>(null);
 
   const email = storageService.getItem(storageService.KEYS.USER_NAME);
@@ -48,80 +43,46 @@ const UserDetails: React.FC = () => {
 
   const usersPerPage = 10;
 
-  const handleDelete = () => {
+  const handleDelete = (email: string) => {
+    setUserToDelete(email);
     setShowDeleteModal(true);
   };
 
-  const confirmDelete  = () => {
-    setShowDeleteModal(true);
-  }
-
-  const cancelDelete  = () => {
-    setShowDeleteModal(false);
-  }
-  
-  // Add these handler functions for month/year selection
-  const toggleMonthYearView = () => {
-    setShowMonthYearPicker(!showMonthYearPicker);
-    setShowYearPicker(false);
-  };
-
-  const toggleYearPicker = () => {
-    setShowYearPicker(!showYearPicker);
-    setSelectedYearDecade(Math.floor(selectedYear / 10) * 10);
-  };
-
-  const handleMonthSelect = (month: number) => {
-    setSelectedMonth(month);
-    setShowMonthYearPicker(false);
-  };
-
-  const handleYearSelect = (year: number) => {
-    setSelectedYear(year);
-    setShowYearPicker(false);
-  };
-
-  const handlePrevDecade = () => {
-    setSelectedYearDecade(selectedYearDecade - 10);
-  };
-
-  const handleNextDecade = () => {
-    setSelectedYearDecade(selectedYearDecade + 10);
-  };
-
-  // Parse the datetime string from the API response
-  // Parse the datetime string from the API response
-  const parseDateTimeString = (dateTimeStr: string): string => {
-  if (!dateTimeStr || dateTimeStr === "{}") {
-    return new Date().toISOString().split("T")[0]; // Default to today
-  }
-
-  try {
-    // Extract the datetime string using regex
-    let dateMatch;
+  const confirmDelete = async () => {
+    if (!userToDelete) return;
     
-    // Check if it's Invited_at or Modified_At
-    if (dateTimeStr.includes("Invited_at")) {
-      dateMatch = dateTimeStr.match(/Invited_at': datetime\.datetime\((\d+), (\d+), (\d+)/);
-    } else {
-      dateMatch = dateTimeStr.match(/Modified_At': datetime\.datetime\((\d+), (\d+), (\d+)/);
-    }
+    try {
+      const response = await fetch(ENDPOINTS.DASHBOARD.DELETE_USER, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          user_email: userToDelete
+        })
+      });
+  
+      const data = await response.json();
 
-    if (dateMatch && dateMatch.length >= 4) {
-      const year = parseInt(dateMatch[1]);
-      const month = parseInt(dateMatch[2]) - 1;
-      const day = parseInt(dateMatch[3]);
-      
-      // const date = new Date(year, month, day);
-      return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    }
-    } catch (error) {
-        console.error("Error parsing date string:", error);
+      if (response.ok) {
+        // Refresh the webpage
+        window.location.reload();
+        toast.success(data.message);
       }
-      
-      return new Date().toISOString().split("T")[0]; // Fallback to today
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error("Failed to delete user");
     }
+  };
 
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setUserToDelete(null);
+  };
+  
   // Fetch user data from API
   useEffect(() => {
     console.log("Email from local storage:", email);
@@ -146,11 +107,14 @@ const UserDetails: React.FC = () => {
           const formattedUsers = data.items.map((item: any) => ({
             email: item.email,
             status: item.status as "Accepted" | "Pending",
-            requestDate: parseDateTimeString(item.date_and_time)
+            requestDate: item.date_and_time === "None" ? 
+              new Date().toISOString().split("T")[0] : 
+              item.date_and_time.split(" ")[0],
+            accessEnabled: item.AccessEnabled
           }));
           
           const userStatusMap = formattedUsers.reduce((acc: {[key: string]: boolean}, user: UserData) => {
-            acc[user.email] = user.status === "Accepted";
+            acc[user.email] = user.accessEnabled;
             return acc;
           }, {});
           setEnabledUsers(userStatusMap);
@@ -179,30 +143,23 @@ const UserDetails: React.FC = () => {
     setOpenMenuIndex(openMenuIndex === index ? null : index);
   };
   
-  const handleDeleteUser = (index: number) => {
-    const updatedUsers = [...userData];
-    updatedUsers.splice(indexOfFirstUser + index, 1);
-    setUserData(updatedUsers);
-    setOpenMenuIndex(null);
-  };
+  // const handleDeleteUser = (index: number) => {
+  //   const updatedUsers = [...userData];
+  //   updatedUsers.splice(indexOfFirstUser + index, 1);
+  //   setUserData(updatedUsers);
+  //   setOpenMenuIndex(null);
+  // };
 
   // Toggle filter dropdowns
   const toggleEmailFilter = () => {
     setShowEmailFilter(!showEmailFilter);
-    setShowDateFilter(false);
-    setShowStatusFilter(false);
-  };
-
-  const toggleDateFilter = () => {
-    setShowDateFilter(!showDateFilter);
-    setShowEmailFilter(false);
+    // setShowDateFilter(false);
     setShowStatusFilter(false);
   };
 
   const toggleStatusFilter = () => {
     setShowStatusFilter(!showStatusFilter);
     setShowEmailFilter(false);
-    setShowDateFilter(false);
   };
 
   // Apply filters to user data
@@ -234,8 +191,6 @@ const UserDetails: React.FC = () => {
       // Close filter dropdowns when clicking outside
       const clickedInEmailFilter = emailFilterRef.current && 
         emailFilterRef.current.contains(event.target as Node);
-      const clickedInDateFilter = dateFilterRef.current && 
-        dateFilterRef.current.contains(event.target as Node);
       const clickedInStatusFilter = statusFilterRef.current && 
         statusFilterRef.current.contains(event.target as Node);
       
@@ -245,10 +200,6 @@ const UserDetails: React.FC = () => {
       
       if (!clickedInEmailFilter) {
         setShowEmailFilter(false);
-      }
-      
-      if (!clickedInDateFilter) {
-        setShowDateFilter(false);
       }
       
       if (!clickedInStatusFilter) {
@@ -276,7 +227,8 @@ const UserDetails: React.FC = () => {
     const newUsers = emails.map(email => ({
       email,
       requestDate: new Date().toISOString().split('T')[0],
-      status: "Pending" as const
+      status: "Pending" as const,
+      accessEnabled: false 
     }));
     
     setUserData([...newUsers, ...userData]);
@@ -288,74 +240,6 @@ const UserDetails: React.FC = () => {
     setEmailFilter("");
     setDateFilter("");
     setStatusFilter("All");
-  };
-
-  // Calendar functionality
-  const getDaysInMonth = (year: number, month: number) => {
-    return new Date(year, month + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (year: number, month: number) => {
-    return new Date(year, month, 1).getDay();
-  };
-
-  const handleDateSelect = (day: number) => {
-    const selectedDate = new Date(selectedYear, selectedMonth, day);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); 
-
-    if (selectedDate <= today) {
-      const formattedDate = selectedDate.toISOString().split('T')[0];
-      setDateFilter(formattedDate);
-      setShowDateFilter(false);
-    }
-  };
-
-  const handlePrevMonth = () => {
-    if (selectedMonth === 0) {
-      setSelectedMonth(11);
-      setSelectedYear(selectedYear - 1);
-    } else {
-      setSelectedMonth(selectedMonth - 1);
-    }
-  };
-
-  const handleNextMonth = () => {
-    if (selectedMonth === 11) {
-      setSelectedMonth(0);
-      setSelectedYear(selectedYear + 1);
-    } else {
-      setSelectedMonth(selectedMonth + 1);
-    }
-  };
-
-  const handleDisableStatusToggle = async (email: string, currentStatus: boolean) => {
-    try {
-      const requestBody = { disable_email: email };
-  
-      const response = await fetch(ENDPOINTS.DASHBOARD.USER_DETAILS, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(requestBody)
-      });
-  
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-  
-      setEnabledUsers(prev => ({
-        ...prev,
-        [email]: !currentStatus
-      }));
-  
-      toast.success(`User disabled successfully`);
-    } catch (error) {
-      // console.error("Failed to update user status:", error);
-      toast.error("Failed to update user status");
-    }
   };
 
     const handleStatusToggle = (email: string, currentStatus: boolean) => {
@@ -370,7 +254,7 @@ const UserDetails: React.FC = () => {
 
     const handleEnableStatusToggle = async (email: string, currentStatus: boolean) => {
       try {
-        const requestBody = { emails: [email] }
+        const requestBody = { email: email }
     
         const response = await fetch(ENDPOINTS.DASHBOARD.USER_DETAILS, {
           method: "POST",
@@ -397,137 +281,35 @@ const UserDetails: React.FC = () => {
         toast.error("Failed to update user status");
       }
     };
-  
-    const renderCalendar = () => {
-    const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
-    const firstDay = getFirstDayOfMonth(selectedYear, selectedMonth);
-    const monthName = new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long' });
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const days = [];
-    const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-    
-    // Weekday headers
-    days.push(
-      <div className="calendar-header" key="header">
-        {weekDays.map(day => (
-          <div className="weekday" key={day}>{day}</div>
-        ))}
-      </div>
-    );
-    
-    // Calendar grid
-    let dayCounter = 1;
-    const calendarRows = [];
-    
-    // Add empty cells for days before the first day of month
-    const firstRow = [];
-    for (let i = 0; i < firstDay; i++) {
-      firstRow.push(<div className="calendar-day empty" key={`empty-${i}`}></div>);
-    }
-    
-    // Add days of the month to the first row
-    for (let i = firstDay; i < 7; i++) {
-      const dayDate = new Date(selectedYear, selectedMonth, dayCounter);
-      const isFutureDate = dayDate > today;
 
-      firstRow.push(
-        <div 
-          className={`calendar-day ${dateFilter === `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(dayCounter).padStart(2, '0')}` ? 'selected' : ''} ${isFutureDate ? 'disabled' : ''}`}
-          key={dayCounter}
-          onClick={() => !isFutureDate && handleDateSelect(dayCounter)}
-        >
-          {dayCounter++}
-        </div>
-      );
-    }
-    calendarRows.push(<div className="calendar-row" key="row-0">{firstRow}</div>);
+    const handleDisableStatusToggle = async (email: string, currentStatus: boolean) => {
+      try {
+        const requestBody = { disable_email: email };
     
-    // Add remaining days
-    while (dayCounter <= daysInMonth) {
-      const row = [];
-      for (let i = 0; i < 7 && dayCounter <= daysInMonth; i++) {
-        const dayDate = new Date(selectedYear, selectedMonth, dayCounter);
-        const isFutureDate = dayDate > today;
-        row.push(
-          <div 
-            className={`calendar-day ${dateFilter === `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(dayCounter).padStart(2, '0')}` ? 'selected' : ''} ${isFutureDate ? 'disabled' : ''}`}
-            key={dayCounter}
-            onClick={() => !isFutureDate && handleDateSelect(dayCounter)}
-          >
-            {dayCounter++}
-          </div>
-        );
+        const response = await fetch(ENDPOINTS.DASHBOARD.USER_DETAILS, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(requestBody)
+        });
+    
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+    
+        setEnabledUsers(prev => ({
+          ...prev,
+          [email]: !currentStatus
+        }));
+    
+        toast.success(`User disabled successfully`);
+      } catch (error) {
+        // console.error("Failed to update user status:", error);
+        toast.error("Failed to update user status");
       }
-      calendarRows.push(<div className="calendar-row" key={`row-${calendarRows.length}`}>{row}</div>);
-    }
-    
-    return (
-      <div className="calendar-container">
-        <div className="calendar-navigation">
-          <button onClick={handlePrevMonth}>&lt;</button>
-          <div className="month-year" onClick={toggleMonthYearView}>
-            {`${monthName} ${selectedYear}`}
-          </div>
-          <button onClick={handleNextMonth}>&gt;</button>
-        </div>
-        
-        {showMonthYearPicker ? (
-          <div className="month-year-picker">
-            {showYearPicker ? (
-              <div className="year-picker">
-                <div className="year-grid">
-                  {Array.from({ length: 12 }, (_, i) => selectedYearDecade + i).map(year => (
-                    <div 
-                      key={year} 
-                      className={`year-cell ${year === selectedYear ? 'selected' : ''}`}
-                      onClick={() => handleYearSelect(year)}
-                    >
-                      {year}
-                    </div>
-                  ))}
-                </div>
-                <div className="year-navigation">
-                  <button onClick={handlePrevDecade}>←</button>
-                  <span>{selectedYearDecade} - {selectedYearDecade + 11}</span>
-                  <button onClick={handleNextDecade}>→</button>
-                </div>
-              </div>
-            ) : (
-              <div className="month-picker">
-                {Array.from({ length: 12 }, (_, i) => i).map(month => (
-                  <div 
-                    key={month} 
-                    className={`month-cell ${month === selectedMonth ? 'selected' : ''}`}
-                    onClick={() => handleMonthSelect(month)}
-                  >
-                    {new Date(2000, month).toLocaleString('default', { month: 'short' })}
-                  </div>
-                ))}
-                <div className="year-selector" onClick={toggleYearPicker}>
-                  {selectedYear} ↓
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="calendar">
-            {days}
-            {calendarRows}
-          </div>
-        )}
-        
-        {dateFilter && (
-          <div className="selected-date">
-            <p>Selected: {formatDate(dateFilter)}</p>
-            <button onClick={() => setDateFilter("")}>Clear</button>
-          </div>
-        )}
-      </div>
-    );
-  };
+    };
 
   const filteredUsers = getFilteredUsers();
   const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
@@ -617,16 +399,6 @@ const UserDetails: React.FC = () => {
               <th>
                 Date of Request
                 <div className="filter-header">
-                  <span
-                    className="filter-icon"
-                    onClick={toggleDateFilter}>
-                    <Calendar size={14} />
-                  </span>
-                  {showDateFilter && (
-                    <div className="filter-dropdown date-filter-dropdown" ref={dateFilterRef}>
-                      {renderCalendar()}
-                    </div>
-                  )}
                 </div>
               </th>
               <th>
@@ -709,7 +481,7 @@ const UserDetails: React.FC = () => {
                     </button>
                     {openMenuIndex === index && (
                       <div className="dropdown-menu">
-                      <button onClick={() => handleDelete()}>Delete</button>
+                      <button onClick={() => handleDelete(user.email)}>Delete</button>
                       {/* {!enabledUsers[user.email] && (
                         <button onClick={() => handleEnableStatusToggle(user.email, enabledUsers[user.email])}>Enable Access</button>
                       )}

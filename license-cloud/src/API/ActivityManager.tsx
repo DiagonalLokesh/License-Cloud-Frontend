@@ -4,85 +4,121 @@ import storageService from "../utils/storageService";
 import { ENDPOINTS } from "../API/Endpoint";
 import { toast } from "react-toastify";
 
-const ActivityManager: React.FC = () => {
-  // const [activityTime, setActivityTime] = useState(0);
-  const [, setActivityTime] = useState(0);
-  const [inactivityTime, setInactivityTime] = useState(0);
-  const [showReconnect, setShowReconnect] = useState(false);  // 15-min inactive dialog
-  const [showRelogin, setShowRelogin] = useState(false);      // 45-min inactive dialog
+/**
+ * ActivityManager - Tracks user activity and manages session timeouts
+ * 
+ * This component handles:
+ * 1. Detecting user inactivity
+ * 2. Showing reconnect dialog after 15 minutes of inactivity
+ * 3. Showing relogin dialog after 45 minutes of inactivity
+ * 4. Periodically updating backend about user activity
+ * 5. Managing session tokens and authentication
+ */
 
-  // Reference to track when the last user activity occurred
+const ActivityManager: React.FC = () => {
+  // State management for tracking activity times and dialog visibility
+  const [, setActivityTime] = useState(0); // Tracks active time (unused variable)
+  const [inactivityTime, setInactivityTime] = useState(0); // Minutes of inactivity
+  const [showReconnect, setShowReconnect] = useState(false); // Controls 15-min dialog
+  const [showRelogin, setShowRelogin] = useState(false); // Controls 45-min dialog
+
+  // Ref to store timestamp of last user activity
   const lastActivityRef = useRef(Date.now());
   const navigate = useNavigate();
 
-  // Extract authentication tokens from storage
+  // Retrieve authentication tokens from storage
   const accessToken = storageService.getItem(storageService.KEYS.ACCESS_TOKEN);
   const refreshToken = storageService.getItem(storageService.KEYS.REFRESH_TOKEN);
   const sessionToken = storageService.getItem(storageService.KEYS.SESSION_TOKEN);
 
+  // On mount: Check localStorage to restore dialog state after page refreshes
   useEffect(() => {
-    // Function to handle user activity events (mouse move, click, mouse scroll, keyboard)
+    const storedInactivityState = localStorage.getItem('inactivityState');
+    const lastInactiveTime = localStorage.getItem('lastInactiveTime');
+    
+    // If user refreshed page while dialog was showing, restore that state
+    if (storedInactivityState === 'reconnect') {
+      setShowReconnect(true);
+    } else if (storedInactivityState === 'relogin') {
+      setShowRelogin(true);
+    }
+    
+    // Restore the timestamp of when inactivity began
+    if (lastInactiveTime) {
+      lastActivityRef.current = parseInt(lastInactiveTime, 10);
+    }
+  }, []);
+
+  // Setup event listeners to detect user activity and check inactivity intervals
+  useEffect(() => {
+    // Function that handles any user interaction
     const handleUserActivity = () => {
       // Don't reset timers if dialogs are already showing
-      if (showReconnect || showRelogin) return;
+      if (showReconnect || showRelogin || 
+          localStorage.getItem('inactivityState') === 'reconnect' || 
+          localStorage.getItem('inactivityState') === 'relogin') return;
 
       const now = Date.now();
-      const inactiveSeconds = (now - lastActivityRef.current) / 60000;
+      const inactiveMinute = (now - lastActivityRef.current) / 60000;
 
-      // TIMING: Activity sensitivity threshold (0.1 minutes)
-      // Change this value to adjust how quickly system recognizes new activity
-      if (inactiveSeconds > 0.1) {
+      // Only reset if user has been inactive for more than 0.1 minutes (6 seconds)
+      // This prevents constant resetting on rapid interactions
+      if (inactiveMinute > 0.1) {
         setActivityTime(inactivityTime);
         setInactivityTime(0);
-        lastActivityRef.current = now;
-        // console.log("activity detected");
+        lastActivityRef.current = now; // Reset last activity timestamp
       }
     };
 
-    // Handle tab/window visibility changes
+    // Special handler for when tab becomes visible again
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && !showReconnect && !showRelogin) {
+      if (document.visibilityState === "visible" && 
+          !showReconnect && !showRelogin && 
+          localStorage.getItem('inactivityState') !== 'reconnect' && 
+          localStorage.getItem('inactivityState') !== 'relogin') {
         handleUserActivity();
       }
     };
 
-    // Add event listeners for user activity
+    // Register event listeners for various user interactions
     window.addEventListener("mousemove", handleUserActivity);
     window.addEventListener("scroll", handleUserActivity);
     window.addEventListener("keydown", handleUserActivity);
     window.addEventListener("click", handleUserActivity);
     window.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // TIMING: Activity check interval (every 1 second)
-    // This timer checks for inactivity every second
+    // Main inactivity check runs every second
     const timer = setInterval(() => {
       const now = Date.now();
       const currentInactiveMinute = Math.floor((now - lastActivityRef.current) / 60000);
 
+      // Update inactivity timer state when it changes
       if (!showRelogin && currentInactiveMinute !== inactivityTime) {
         setInactivityTime(currentInactiveMinute);
 
-        // TIMING: First timeout threshold (15 minutes)
         // After 15 minutes of inactivity, show reconnect dialog
         if (currentInactiveMinute >= 15 && currentInactiveMinute < 45 && !showReconnect) {
           setShowReconnect(true);
+          localStorage.setItem('inactivityState', 'reconnect');
+          localStorage.setItem('lastInactiveTime', lastActivityRef.current.toString());
           console.log("reconnect");
         }
 
-        // TIMING: Second timeout threshold (45 minutes)
         // After 45 minutes of inactivity, show relogin dialog
         if (currentInactiveMinute >= 45) {
           setShowRelogin(true);
           setShowReconnect(false);
+          localStorage.setItem('inactivityState', 'relogin');
+          localStorage.setItem('lastInactiveTime', lastActivityRef.current.toString());
           console.log("relogin");
         }
       }
-    }, 1000);
+    }, 1000); // Check every second
 
-    // Clean up event listeners and timers
+    // Cleanup function to remove event listeners when component unmounts
     return () => {
       window.removeEventListener("mousemove", handleUserActivity);
-      window.addEventListener("scroll", handleUserActivity);
+      window.removeEventListener("scroll", handleUserActivity);
       window.removeEventListener("keydown", handleUserActivity);
       window.removeEventListener("click", handleUserActivity);
       window.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -90,24 +126,23 @@ const ActivityManager: React.FC = () => {
     };
   }, [inactivityTime, showReconnect, showRelogin]);
 
+  // Backend communication effect - ping server every 5 minutes to keep session alive
   useEffect(() => {
     let lastUpdateHit = 0;
   
-    // TIMING: Backend activity update check (every minute)
-    // This timer runs the backend activity update logic
+    // Run check every minute
     const timer = setInterval(async () => {
       const now = Date.now();
       const currentInactiveMinutes = Math.floor((now - lastActivityRef.current) / 60000);
       setInactivityTime(currentInactiveMinutes);
   
-      // TIMING: Backend activity endpoint call frequency (every 5 minutes)
-      // Hit the activity update endpoint every 5 minutes
+      // Backend ping happens every 5 minutes (when currentMinute % 5 === 0)
       const currentMinute = Math.floor(now / 60000);
       if (currentMinute % 5 === 0 && currentMinute !== lastUpdateHit) {
         lastUpdateHit = currentMinute;
   
         try {
-          // Call the UPDATE_ACTIVITY endpoint to keep session alive
+          // Call the UPDATE_ACTIVITY endpoint to keep session alive on server
           const res = await fetch(ENDPOINTS.AUTH.UPDATE_ACTIVITY, {
             method: "PUT",
             headers: {
@@ -127,29 +162,32 @@ const ActivityManager: React.FC = () => {
         }
       }
   
-      // TIMING: First timeout threshold (15 minutes) - duplicate check
-      // After 15 minutes of inactivity, show reconnect dialog
+      // Additional inactivity threshold checks (redundant with the checks in previous effect)
       if (currentInactiveMinutes >= 15 && currentInactiveMinutes < 45 && !showReconnect) {
         setShowReconnect(true);
+        localStorage.setItem('inactivityState', 'reconnect');
+        localStorage.setItem('lastInactiveTime', lastActivityRef.current.toString());
         console.log("Reconnect");
       }
   
-      // TIMING: Second timeout threshold (45 minutes) - duplicate check
-      // After 45 minutes of inactivity, show relogin dialog
       if (currentInactiveMinutes >= 45) {
         setShowRelogin(true);
         setShowReconnect(false);
+        localStorage.setItem('inactivityState', 'relogin');
+        localStorage.setItem('lastInactiveTime', lastActivityRef.current.toString());
         console.log("Relogin");
       }
-    }, 60000); // TIMING: Check frequency - once per minute (60000ms)
+    }, 60000); // Run every minute
   
     return () => {
       clearInterval(timer);
     };
   }, [accessToken, refreshToken, sessionToken, showReconnect, showRelogin]);
   
-  
-  // Function to handle when user clicks "Reconnect" button
+  /**
+   * Handles reconnection when user clicks "Reconnect" button after 15 min inactivity
+   * First tries with access token, then falls back to refresh token if needed
+   */
   const handleReconnect = async () => {
     try {
       // First try refreshing with access token
@@ -166,14 +204,23 @@ const ActivityManager: React.FC = () => {
         const data = await res.json();
         console.log("reconnect");
         
+        // Store new access token if provided
         if (data?.access_token) {
           storageService.setItem(storageService.KEYS.ACCESS_TOKEN, data.access_token);
         }
-
-        setShowReconnect(true);
-        window.location.reload();
+        
+        // Clear inactivity state in localStorage
+        localStorage.removeItem('inactivityState');
+        localStorage.removeItem('lastInactiveTime');
+        
+        setShowReconnect(false);
+        // Reset activity timer
+        lastActivityRef.current = Date.now();
+        setInactivityTime(0);
       }
-      // If access token is expired, try refresh token
+
+      // If access token is expired (401), try using refresh token instead
+
       else if (res.status === 401) {
         console.log("Access token expired, trying refresh token...");
 
@@ -181,21 +228,29 @@ const ActivityManager: React.FC = () => {
           method: "POST",
           headers: {
             "Session-Token": sessionToken,
-            "Authorization": `Bearer ${refreshToken}`,
+            "Authorization": `Bearer ${refreshToken}`, // Use refresh token instead
             "Content-Type": "application/json",
           },
         });
+        
         if (refreshRes.status === 200) {
           const data = await refreshRes.json();
           console.log("refresh token worked", data.access_token);
       
+          // Store new access token
           if (data?.access_token) {
             storageService.setItem(storageService.KEYS.ACCESS_TOKEN, data.access_token);
           }
-
-          setShowReconnect(true);
+          
+          // Clear inactivity state
+          localStorage.removeItem('inactivityState');
+          localStorage.removeItem('lastInactiveTime');
+          
+          setShowReconnect(false);
           console.log("reconnect");
-          window.location.reload();
+          // Reset activity timer
+          lastActivityRef.current = Date.now();
+          setInactivityTime(0);
         }
       }
     } 
@@ -204,10 +259,14 @@ const ActivityManager: React.FC = () => {
     }
   };
 
-  // Function to handle when user clicks "Relogin" button
+  /**
+   * Handles relogin when user clicks "Relogin" button after 45 min inactivity
+   * Logs out user and redirects to login page
+   */
+
   const handleRelogin = async () => {
     try {
-      // Call logout endpoint to invalidate session
+      // Call logout endpoint to invalidate session on server
       const relogin = await fetch(ENDPOINTS.AUTH.LOGOUT, {
         method: "POST",
         headers: {
@@ -220,8 +279,13 @@ const ActivityManager: React.FC = () => {
       if(relogin.status === 200) {
         const data = await relogin.json();
         toast.success(data.Logout);
-        setShowReconnect(true);
-        navigate("/login");
+        
+        // Clear inactivity state
+        localStorage.removeItem('inactivityState');
+        localStorage.removeItem('lastInactiveTime');
+        
+        setShowRelogin(false);
+        navigate("/login"); // Redirect to login page
       }
     } catch (err) {
       console.error("Logout failed");
@@ -237,6 +301,7 @@ const ActivityManager: React.FC = () => {
           <button onClick={handleReconnect} style={buttonStyle}>Reconnect</button>
         </div>
       )}
+
       {/* Dialog shown after 45 minutes of inactivity */}
       {showRelogin && (
         <div style={dialogStyle}>
@@ -248,6 +313,7 @@ const ActivityManager: React.FC = () => {
   );
 };
 
+// Styles for the dialogs and buttons
 const dialogStyle: React.CSSProperties = {
   position: "fixed",
   top: "50%",
@@ -273,3 +339,6 @@ const buttonStyle: React.CSSProperties = {
 };
 
 export default ActivityManager;
+
+
+// By Lokesh Wankhede - 24.04.2025

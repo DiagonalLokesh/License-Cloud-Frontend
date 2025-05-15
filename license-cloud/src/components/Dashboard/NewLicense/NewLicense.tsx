@@ -359,7 +359,7 @@ const NewLicense: React.FC = () => {
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>Need Database Storage?</label>
+                  <label>Database Access Required (ex. MongoDB, PostgreSQL)</label>
                   <select 
                     className="form-control" 
                     value={needsDatabase}
@@ -372,7 +372,7 @@ const NewLicense: React.FC = () => {
                 </div>
                 
                 <div className="form-group">
-                  <label>Need Translation Services?</label>
+                  <label>Translation Access Required (ex. Bhashini)</label>
                   <select 
                     className="form-control" 
                     value={needsTranslation}
@@ -385,7 +385,7 @@ const NewLicense: React.FC = () => {
                 </div>
                 
                 <div className="form-group">
-                  <label>Need Storage Device?</label>
+                  <label>Storage Device Access Required (ex. MS OneDrive, Google Drive)</label>
                   <select 
                     className="form-control" 
                     value={needsStorage}

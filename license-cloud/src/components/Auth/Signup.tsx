@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import "./Signup.css";
 import Logo from "../../components/Logo/Logo";
 import storageService from "../../utils/storageService";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 const Signup: React.FC = () => {
@@ -11,7 +12,8 @@ const Signup: React.FC = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const navigate = useNavigate();
-
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const handleSignup = async () => {
     if (password !== confirmPassword) {
       toast.error("Passwords do not match.");
@@ -71,20 +73,36 @@ const Signup: React.FC = () => {
 
           <div className="form-group">
             <label>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div className="password-input-wrapper">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <span
+                className="toggle-password"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </span>
+              </div>
           </div>
 
           <div className="form-group">
             <label>Confirm Password</label>
+            <div className="password-input-wrapper">
             <input
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
+            <span
+                className="toggle-password"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+              </span>
+            </div>
           </div>
 
           <button onClick={handleSignup} className="signup-button">

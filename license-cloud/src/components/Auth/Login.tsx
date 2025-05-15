@@ -52,7 +52,9 @@ const Login: React.FC = () => {
     <div className="login-container">
       <Logo />
       <div className="login-card">
-        <div className="login-header"></div>
+        <div className="login-header">
+          <h3>Existing Account! Login</h3>
+        </div>
         <div className="login-form-container">
           <div className="form-group">
             <label>Email</label>

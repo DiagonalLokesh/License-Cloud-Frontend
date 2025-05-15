@@ -120,7 +120,8 @@
 }
 
 .table-container {
-  overflow-x: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .details-table {
@@ -174,3 +175,4 @@
     padding: 0.5rem;
   }
 }
+

@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   BadgePlus,
   Users,
-  FileSearch,
+  // FileSearch,
   User,
   Menu,
   X,
@@ -75,12 +75,12 @@ const Dashboard: React.FC = () => {
             {!collapsed && <span>New License</span>}
           </Link>
 
-          <Link
+          {/* <Link
             to="/dashboard/license-details"
             className={location.pathname.includes("license-details") ? "active" : ""}>
             <FileSearch />
             {!collapsed && <span>License Details</span>}
-          </Link>
+          </Link> */}
 
           <Link
             to="/dashboard/clients"

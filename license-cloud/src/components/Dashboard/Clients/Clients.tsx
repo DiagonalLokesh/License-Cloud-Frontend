@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { ChevronLeft, ChevronRight, X, User, Briefcase, Phone, Calendar, Key, Database, HardDrive, Globe, MessageSquare } from "lucide-react";
 import "./Clients.css";
+import storageService from "../../../utils/storageService";
+import { ENDPOINTS } from "../../../API/Endpoint";
 
 interface Client {
   client_id: string;
@@ -8,15 +10,194 @@ interface Client {
   users: number;
   active_users: number;
   serial_number: number;
+  status: string;
+  created_at: string;
+  expiry_date: string;
+  license_number: string;
+  signed_license_key: string;
+  license_type: string;
+  translation: boolean;
+  storage_device: boolean;
+  database: boolean;
+  message: string | null;
+  contact_person_name: string | null;
+  contact_person_designation: string | null;
+  contact_person_mobile_number: string | null;
 }
 
-const Clients: React.FC = () => {
-  const sampleData: Client[] = [
-    {"client_id":"VRI8MMZ35Q1IF2OR","client_name":"Diagonal","users":30,"active_users":3,"serial_number":1},{"client_id":"VRI8MMZ35Q1IF2OR","client_name":"Diagonal","users":5,"active_users":5,"serial_number":2},{"client_id":"VRI8MMZ35Q1IF2OR","client_name":"Diagonal","users":3,"active_users":3,"serial_number":2},{"client_id":"VRI8MMZ35Q1IF2OR","client_name":"Diagonal","users":5,"active_users":5,"serial_number":2},{"client_id":"VRI8MMZ35Q1IF2OR","client_name":"Diagonal","users":20,"active_users":10,"serial_number":2},{"client_id":"VRI8MMZ35Q1IF2OR","client_name":"Diagonal","users":30,"active_users":4,"serial_number":1},{"client_id":"VRI8MMZ35Q1IF2OR","client_name":"Diagonal","users":30,"active_users":4,"serial_number":1},{"client_id":"VRI8MMZ35Q1IF2OR","client_name":"Diagonal","users":30,"active_users":6,"serial_number":1},{"client_id":"VRI8MMZ35Q1IF2OR","client_name":"Diagonal","users":20,"active_users":10,"serial_number":2},{"client_id":"","client_name":"Aryabhat","users":20,"active_users":3,"serial_number":1},{"client_id":"YEZZBT4T400XFJS2","client_name":"Varroc","users":1,"active_users":0,"serial_number":3},{"client_id":"U794ZVY2U4M4TN43","client_name":"Demo","users":1,"active_users":0,"serial_number":0},{"client_id":"LXRTQE95SL9NDCDE","client_name":"ASyasd","users":1,"active_users":0,"serial_number":1},{"client_id":"27ATLSPHL7BI6FSQ","client_name":"","users":1,"active_users":0,"serial_number":1},{"client_id":"27ATLSPHL7BI6FSQ","client_name":"","users":1,"active_users":0,"serial_number":1},{"client_id":"27ATLSPHL7BI6FSQ","client_name":"","users":7,"active_users":0,"serial_number":1},{"client_id":"IBHQYMP5T2OA3UIO","client_name":"New Client","users":1,"active_users":0,"serial_number":1},{"client_id":"","client_name":"Aryabhat","users":30,"active_users":8,"serial_number":1},{"client_id":"VRI8MMZ35Q1IF2OR","client_name":"Diagonal","users":20,"active_users":10,"serial_number":2},{"client_id":"IBHQYMP5T2OA3UIO","client_name":"New Client","users":1,"active_users":0,"serial_number":1},{"client_id":"YEZZBT4T400XFJS2","client_name":"Varroc","users":1,"active_users":0,"serial_number":1},{"client_id":"","client_name":"Aryabhat","users":19,"active_users":0,"serial_number":1},{"client_id":"","client_name":"Aryabhat","users":30,"active_users":8,"serial_number":1}
-  ];
+interface DetailCardProps {
+  client: Client;
+  cardType: 'contact' | 'license';
+  onClose: () => void;
+}
 
-  const [clients] = useState<Client[]>(sampleData);
-  const [filteredClients, setFilteredClients] = useState<Client[]>(sampleData);
+const DetailCard: React.FC<DetailCardProps> = ({ client, cardType, onClose }) => {
+  // Ref for the card to implement click outside to close
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Effect for handling click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [onClose]);
+
+  // Format date strings for better display
+  const formatDate = (dateString: string) => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (e) {
+      return dateString;
+    }
+  };
+
+  return (
+    <div className="detail-card-overlay">
+      <div className="detail-card" ref={cardRef}>
+        <div className="detail-card-header">
+          <h3>{cardType === 'contact' ? 'Contact Details' : 'License Details'}</h3>
+          <button className="close-button" onClick={onClose} aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="detail-card-content">
+          {cardType === 'contact' ? (
+            <div className="contact-details">
+              <div className="detail-item">
+                <span className="detail-label">Client Name</span>
+                <span className="detail-value">{client.client_name}</span>
+              </div>
+              <div className="detail-item" style={{ marginTop: '20px' }}>
+                <span className="detail-label">Client ID</span>
+                <span className="detail-value">{client.client_id}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">
+                  <User size={16} style={{ marginRight: '8px' }} /> Contact Person
+                </span>
+                <span className={`detail-value ${!client.contact_person_name ? 'not-specified' : ''}`}>
+                  {client.contact_person_name || "Null"}
+                </span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">
+                  <Briefcase size={16} style={{ marginRight: '8px' }} /> Designation
+                </span>
+                <span className={`detail-value ${!client.contact_person_designation ? 'not-specified' : ''}`}>
+                  {client.contact_person_designation || "Null"}
+                </span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">
+                  <Phone size={16} style={{ marginRight: '8px' }} /> Mobile Number
+                </span>
+                <span className={`detail-value ${!client.contact_person_mobile_number ? 'not-specified' : ''}`}>
+                  {client.contact_person_mobile_number || "Null"}
+                </span>
+              </div>
+              
+              
+            </div>
+          ) : (
+            <div className="license-details">
+              <div className="detail-item">
+                <span className="detail-label">
+                  <Key size={16} style={{ marginRight: '8px' }} /> License Type
+                </span>
+                <span className={`detail-value ${!client.license_type ? 'not-specified' : ''}`}>
+                  {client.license_type || "Null"}
+                </span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">License Number</span>
+                <span className="detail-value">{client.license_number || "Null"}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Serial Number</span>
+                <span className="detail-value">{client.serial_number || "Null"}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">
+                  <Calendar size={16} style={{ marginRight: '8px' }} /> Created At
+                </span>
+                <span className="detail-value">{formatDate(client.created_at) || "Null"}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">
+                  <Calendar size={16} style={{ marginRight: '8px' }} /> Expiry Date
+                </span>
+                <span className="detail-value">{formatDate(client.expiry_date) || "Null"}</span>
+              </div>
+              
+              <div className="detail-item">
+                <span className="detail-label">
+                  <Globe size={16} style={{ marginRight: '8px' }} /> Translation
+                </span>
+                <span className="detail-value boolean-value">
+                  <span className={`boolean-indicator ${client.translation ? 'enabled' : ''}`}></span>
+                  {client.translation ? "Enabled" : "Disabled"}
+                </span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">
+                  <HardDrive size={16} style={{ marginRight: '8px' }} /> Storage Device
+                </span>
+                <span className="detail-value boolean-value">
+                  <span className={`boolean-indicator ${client.storage_device ? 'enabled' : ''}`}></span>
+                  {client.storage_device ? "Enabled" : "Disabled"}
+                </span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">
+                  <Database size={16} style={{ marginRight: '8px' }} /> Database
+                </span>
+                <span className="detail-value boolean-value">
+                  <span className={`boolean-indicator ${client.database ? 'enabled' : ''}`}></span>
+                  {client.database ? "Enabled" : "Disabled"}
+                </span>
+              </div>
+              
+              {client.message && (
+                <div className="detail-item">
+                  <span className="detail-label">
+                    <MessageSquare size={16} style={{ marginRight: '8px' }} /> Message
+                  </span>
+                  <span className="detail-value">{client.message}</span>
+                </div>
+              )}
+              
+              {client.signed_license_key && (
+                <div className="detail-item">
+                  <span className="detail-label">Signed License Key</span>
+                  <span className="license-key">{client.signed_license_key}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Clients: React.FC = () => {
+  const [clients, setClients] = useState<Client[]>([]);
+  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
   const [filters] = useState({
     client_name: "",
     client_id: "",
@@ -25,20 +206,85 @@ const Clients: React.FC = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [sortConfig, setSortConfig] = useState<{key: keyof Client, direction: 'ascending' | 'descending'} | null>(null);
+  const [sortConfig] = useState<{key: keyof Client, direction: 'ascending' | 'descending'} | null>(null);
+  const menuRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const accessToken = storageService.getItem(storageService.KEYS.ACCESS_TOKEN);
+  const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
+  
+  // State for detail card
+  const [detailCard, setDetailCard] = useState<{
+    visible: boolean;
+    client: Client | null;
+    type: 'contact' | 'license';
+  }>({
+    visible: false,
+    client: null,
+    type: 'contact'
+  });
 
+  // Fetch clients data from API
   useEffect(() => {
-    let result = clients;
+    const fetchClientsData = async () => {
+      setLoading(true);
+      setError("");
+      
+      try {
+        const response = await fetch(ENDPOINTS.DASHBOARD.CLIENTS, {
+          method: 'GET',
+          headers: {
+            'accept': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+        
+        const data = await response.json() as Client[];
+        setClients(data);
+        setFilteredClients(data);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+        setError(`Failed to fetch clients data: ${errorMessage}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClientsData();
+  }, [accessToken]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openMenuIndex !== null) {
+        const currentMenuRef = menuRefs.current[openMenuIndex];
+        if (currentMenuRef && !currentMenuRef.contains(event.target as Node)) {
+          setOpenMenuIndex(null);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openMenuIndex]);
+
+  // Apply filters and sorting
+  useEffect(() => {
+    let result = [...clients];
     
     if (filters.client_name) {
       result = result.filter(client => 
-        client.client_name.toLowerCase().includes(filters.client_name.toLowerCase())
+        client.client_name?.toLowerCase().includes(filters.client_name.toLowerCase())
       );
     }
     
     if (filters.client_id) {
       result = result.filter(client => 
-        client.client_id.toLowerCase().includes(filters.client_id.toLowerCase())
+        client.client_id?.toLowerCase().includes(filters.client_id.toLowerCase())
       );
     }
     
@@ -57,10 +303,17 @@ const Clients: React.FC = () => {
     // Apply sorting if configured
     if (sortConfig !== null) {
       result.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+        
+        // Handle null or undefined values
+        if (aValue === null || aValue === undefined) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (bValue === null || bValue === undefined) return sortConfig.direction === 'ascending' ? 1 : -1;
+        
+        if (aValue < bValue) {
           return sortConfig.direction === 'ascending' ? -1 : 1;
         }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
+        if (aValue > bValue) {
           return sortConfig.direction === 'ascending' ? 1 : -1;
         }
         return 0;
@@ -70,23 +323,6 @@ const Clients: React.FC = () => {
     setFilteredClients(result);
     setCurrentPage(1); // Reset to first page on filter change
   }, [filters, clients, sortConfig]);
-
-  // // Handle filter change
-  // const handleFilterChange = (key: string, value: string) => {
-  //   setFilters(prevFilters => ({
-  //     ...prevFilters,
-  //     [key]: value
-  //   }));
-  // };
-
-  // Handle sorting
-  const requestSort = (key: keyof Client) => {
-    let direction: 'ascending' | 'descending' = 'ascending';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({ key, direction });
-  };
 
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -107,12 +343,41 @@ const Clients: React.FC = () => {
     }
   };
 
-  // Render sorting indicator
-  const getSortIndicator = (key: keyof Client) => {
-    if (!sortConfig || sortConfig.key !== key) {
-      return '↕';
+  // Format status with appropriate styling
+  const getStatusClass = (status: string) => {
+    if (!status) return "";
+    
+    switch (status.toLowerCase()) {
+      case "active":
+        return "status-active"; // Green
+      case "inactive":
+        return "status-inactive"; // Grey
+      case "expired":
+        return "status-expired"; // Blue
+      default:
+        return "";
     }
-    return sortConfig.direction === 'ascending' ? '↑' : '↓';
+  };
+  const handleMenuToggle = (index: number) => {
+    setOpenMenuIndex(openMenuIndex === index ? null : index);
+  };
+
+  // Handler for opening detail cards
+  const handleOpenDetails = (client: Client, type: 'contact' | 'license') => {
+    setDetailCard({
+      visible: true,
+      client,
+      type
+    });
+    setOpenMenuIndex(null); // Close the menu after selection
+  };
+
+  // Handler for closing detail cards
+  const handleCloseDetails = () => {
+    setDetailCard({
+      ...detailCard,
+      visible: false
+    });
   };
 
   return (
@@ -122,108 +387,108 @@ const Clients: React.FC = () => {
         <p>View and manage your client accounts</p>
       </div>
 
-      <div className="table-container">
-        <table className="clients-table">
-          <thead>
-            <tr>
-              <th onClick={() => requestSort('client_id')}>
-                Client ID {getSortIndicator('client_id')}
-                {/* <div className="filter-container">
-                  <input 
-                    type="text" 
-                    placeholder="Filter..." 
-                    onChange={(e) => handleFilterChange('client_id', e.target.value)}
-                    className="filter-input"
-                  />
-                </div> */}
-              </th>
-              <th onClick={() => requestSort('client_name')}>
-                Client Name {getSortIndicator('client_name')}
-                {/* <div className="filter-container">
-                  <input 
-                    type="text" 
-                    placeholder="Filter..." 
-                    onChange={(e) => handleFilterChange('client_name', e.target.value)}
-                    className="filter-input"
-                  />
-                </div> */}
-              </th>
-              <th onClick={() => requestSort('users')}>
-                Users {getSortIndicator('users')}
-                {/* <div className="filter-container">
-                  <input 
-                    type="text" 
-                    placeholder="Filter..." 
-                    onChange={(e) => handleFilterChange('users', e.target.value)}
-                    className="filter-input"
-                  />
-                </div> */}
-              </th>
-              <th onClick={() => requestSort('active_users')}>
-                Active Users {getSortIndicator('active_users')}
-                {/* <div className="filter-container">
-                  <input 
-                    type="text" 
-                    placeholder="Filter..." 
-                    onChange={(e) => handleFilterChange('active_users', e.target.value)}
-                    className="filter-input"
-                  />
-                </div> */}
-              </th>
-               <th onClick={() => requestSort('serial_number')}>
-                Serial Number {getSortIndicator('serial_number')}
-                {/* <div className="filter-container">
-                  <input 
-                    type="text" 
-                    placeholder="Filter..." 
-                    onChange={(e) => handleFilterChange('serial_number', e.target.value)}
-                    className="filter-input"
-                  />
-                </div> */}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentItems.length > 0 ? (
-              currentItems.map((client, index) => (
-                <tr key={`${client.client_id}-${index}`}>
-                  <td className="client-id">{client.client_id}</td>
-                  <td>{client.client_name}</td>
-                  <td>{client.users}</td>
-                  <td>{client.active_users}</td>
-                  <td>{client.serial_number}</td>
+      {loading ? (
+        <div className="loading-indicator">Loading client data...</div>
+      ) : error ? (
+        <div className="error-message">{error}</div>
+      ) : (
+        <>
+          <div className="table-container">
+            <table className="clients-table">
+              <thead>
+                <tr>
+                  <th>Client Name</th>
+                  <th>License No</th>
+                  <th>License Serial No</th>
+                  <th>Users</th>
+                  <th>Active Users</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={6} className="no-results">No clients match your filters</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {currentItems.length > 0 ? (
+                  currentItems.map((client, index) => (
+                    <tr key={`${client.client_name}-${index}`}>
+                      <td className="client-id">{client.client_name || "-"}</td>
+                      <td>{client.license_number || "-"}</td>
+                      <td>{client.serial_number || "-"}</td>
+                      <td>{client.users}</td>
+                      <td>{client.active_users}</td>
+                      <td>
+                        <span className={`status-tag ${getStatusClass(client.status)}`}>
+                          {client.status || "-"}
+                        </span>
+                      </td>
+                      <td className="action-cell">
+                        <div 
+                          className="menu-wrapper" 
+                          ref={(el) => {
+                            menuRefs.current[index] = el;
+                          }}
+                        >
+                          <button 
+                            className="menu-button" 
+                            onClick={() => handleMenuToggle(index)}
+                            aria-label="Open actions menu"
+                          >
+                            ⋮
+                          </button>
+                          {openMenuIndex === index && (
+                            <div className="dropdown-clients-action-menu">
+                              <button onClick={() => handleOpenDetails(client, 'contact')}>
+                                Contact Details
+                              </button>
+                              <button onClick={() => handleOpenDetails(client, 'license')}>
+                                License Details
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="no-results">No clients found</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      <div className="pagination">
-        <button 
-          onClick={goToPreviousPage} 
-          disabled={currentPage === 1}
-          className="pagination-button"
-        >
-          <ChevronLeft size={16} />
-          Previous
-        </button>
-        <span className="page-info">
-          Page {currentPage} of {totalPages} ({filteredClients.length} total records)
-        </span>
-        <button 
-          onClick={goToNextPage} 
-          disabled={currentPage === totalPages}
-          className="pagination-button"
-        >
-          Next
-          <ChevronRight size={16} />
-        </button>
-      </div>
+          <div className="pagination">
+            <button 
+              onClick={goToPreviousPage} 
+              disabled={currentPage === 1}
+              className="pagination-button"
+            >
+              <ChevronLeft size={16} />
+              Previous
+            </button>
+            <span className="page-info">
+              Page {currentPage} of {totalPages} ({filteredClients.length} total records)
+            </span>
+            <button 
+              onClick={goToNextPage} 
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="pagination-button"
+            >
+              Next
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          {/* Detail Card */}
+          {detailCard.visible && detailCard.client && (
+            <DetailCard 
+              client={detailCard.client} 
+              cardType={detailCard.type} 
+              onClose={handleCloseDetails} 
+            />
+          )}
+        </>
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 const BASE_URL = "https://license.aryabhat.ai/api";
+const SUB_URL = "https://license.aryabhat.ai";
 
 export const ENDPOINTS = {
   AUTH: {
@@ -15,12 +16,14 @@ export const ENDPOINTS = {
   DASHBOARD: {
     DASHBOARD: `${BASE_URL}/dashboard`,
     NEW_LICENSE: `${BASE_URL}/dashboard/new-license`,
-    CLIENTS: `${BASE_URL}/dashboard/clients`,
     LICENSE_DETAILS: `${BASE_URL}/dashboard/license-details`,
     USER_DETAILS: `${BASE_URL}/UserDetails`,
     INVITE_USERS: `${BASE_URL}/invite-users`,
     GET_LICENSE: `${BASE_URL}/get-license`,
+    CLIENTS: `${SUB_URL}/get_all_license`,
+    GET_LICENSE_DETAILS: (licenseNumber: string) => `/api/dashboard/license/${encodeURIComponent(licenseNumber)}`,
     CREATE_CLIENTS: `${BASE_URL}/create_client`,
     CREATE_LICENSE: `${BASE_URL}/create-license`,
+    DELETE_USER: `${BASE_URL}/delete-user`,
   }
 };

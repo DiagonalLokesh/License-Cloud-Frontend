@@ -142,13 +142,14 @@ html, body {
 /* Table styles */
 .table-container {
   margin-top: 40px;
-  padding: 20px 20px;
+  /* padding: 20px 10px; */
+  margin-bottom: 40px;
 }
 
 .user-table {
   width: 100%;
   border-collapse: separate;
-  border-spacing: 0 10px;
+  border-spacing: 10px 20px;
 }
 
 .user-table th {
@@ -156,6 +157,7 @@ html, body {
   text-align: left;
   border-bottom: 1px solid #eee;
   color: #666;
+  background-color: #f7f8fa;
   font-weight: 600;
   position: relative;
 }
